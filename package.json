@@ -1,0 +1,31 @@
+{
+  "name": "imageresizerelectron",
+  "productName": "Image Resizer",
+  "version": "1.0.0",
+  "description": "Aplicativo para alterar a largura e altura de imagens",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "matoi.ResizerImage",
+    "files": ["**/**"],
+    "directories": {
+      "output": "dist"
+    },
+    "win" : {
+      "target": "nsis"
+    }
+  },
+  "author": "Gustavo Matoi",
+  "license": "ISC",
+  "dependencies": {
+    "resize-img": "^2.0.0",
+    "toastify-js": "^1.12.0"
+  },
+  "devDependencies": {
+    "electron": "^26.1.0",
+    "electron-builder": "^24.6.4"
+  }
+}

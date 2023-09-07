@@ -1,0 +1,110 @@
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
+const resizeImg = require('resize-img')
+const {app, BrowserWindow, Menu, ipcMain, shell} = require('electron');
+const isMac = process.platform === 'darwin';
+
+let mainWindow;
+
+const createMainWindow = () => {
+    mainWindow = new BrowserWindow({
+        title: 'Image Resizer',
+        width:  800,
+        height: 600,
+        webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: true,
+            preload: path.join(__dirname, 'preload.js')
+          }
+    });
+
+    mainWindow.loadFile(path.join(__dirname, './renderer/index.html'));
+}
+
+const createAboutWindow = () => {
+    const aboutWindow = new BrowserWindow({
+        title: 'Sobre',
+        width: 400,
+        height: 500,
+    })
+    aboutWindow.loadFile(path.join(__dirname, './renderer/about.html'))
+}
+
+app.whenReady().then(()=> {
+    createMainWindow();
+
+    const mainMenu = Menu.buildFromTemplate(menu);
+    Menu.setApplicationMenu(mainMenu)
+
+    mainWindow.on('closed', () => {mainWindow = null})
+    app.on('activate', () => {
+        if(BrowserWindow.getAllWindows().length === 0){ 
+            createMainWindow();
+        }
+    })
+});
+
+const menu = [
+    ...(isMac ? [{
+        label: app.name,
+        submenu: [
+            {
+                label: 'Sobre',
+                click: createAboutWindow
+            }
+        ]
+    }]: []),
+    {
+        role: 'fileMenu'
+    },
+    ...(!isMac ? [{
+        label: 'Ajuda',
+        submenu: [{
+            label: 'Sobre',
+            click: createAboutWindow
+        }]
+    }] : [])
+]
+
+const resizeImage = async ({ imgPath, height, width, dest }) => {
+    try {
+      // console.log(imgPath, height, width, dest);
+  
+      // Resize image
+      const newPath = await resizeImg(fs.readFileSync(imgPath), {
+        width: +width,
+        height: +height,
+      });
+  
+      // Get filename
+      const filename = path.basename(imgPath);
+  
+      // Create destination folder if it doesn't exist
+      if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest);
+      }
+  
+      // Write the file to the destination folder
+      fs.writeFileSync(path.join(dest, filename), newPath);
+  
+      // Send success to renderer
+      mainWindow.webContents.send('image:done');
+  
+      // Open the folder in the file explorer
+      shell.openPath(dest);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+ipcMain.on('image:resize', (e, options) => { 
+    options.dest = path.join(os.homedir(), 'imageResizer');
+    resizeImage(options)
+})
+
+app.on('window-all-closed', ()=> {
+    if(!isMac){
+        app.quit()
+    }
+})
